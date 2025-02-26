@@ -12,92 +12,116 @@ import javax.xml.transform.stream.StreamResult;
 import org.w3c.dom.Document;
 
 import br.com.sankhya.service.SWServiceInvoker;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
- * Esse exemplo depende das seguintes APIs no classPath:
+ * This example depends on the following APIs in the classpath:
  * 
- *    1 - SWService (API Sankhya para chamar Webservices)
- *    2 - Apache Commons Codec (Dependencia indireta da SWService)
+ *    1 - SWService (Sankhya API for calling Webservices)
+ *    2 - Apache Commons Codec (Indirect dependency of SWService)
  *     
  * 
  */
 public class SankhyaERPIntegration {
-	public static void main(String[] args) {
-		listarParceiros("http://192.168.1.218:8180", "SUP", "", "JOSE%");
-	}
+    private static final Logger logger = LogManager.getLogger(SankhyaERPIntegration.class);
 
-	private static void listarParceiros(String erpUrl, String erpUser, String erpPassword, String partnerName) {
-		try {
-			SWServiceInvoker si = new SWServiceInvoker(erpUrl, erpUser, erpPassword);
+    public static void main(String[] args) {
+        listarParceiros("http://192.168.1.218:8180", "SUP", "", "JOSE%");
+    }
 
-			StringBuffer serviceBody = loadServiceBody(SankhyaERPIntegration.class, "buscaParceirosPorNome-body.xml");
-			
-			replaceParameters(serviceBody, partnerName);
-			
-			Document docRet = si.call("CRUDServiceProvider.loadRecords", "mge", serviceBody.toString() );
+    /**
+     * Lists partners from the ERP system.
+     *
+     * @param erpUrl      the URL of the ERP system
+     * @param erpUser     the username for the ERP system
+     * @param erpPassword the password for the ERP system
+     * @param partnerName the name of the partner to search for
+     */
+    private static void listarParceiros(String erpUrl, String erpUser, String erpPassword, String partnerName) {
+        try {
+            SWServiceInvoker si = new SWServiceInvoker(erpUrl, erpUser, erpPassword);
 
-			printResponse(docRet);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+            StringBuffer serviceBody = loadServiceBody(SankhyaERPIntegration.class, "buscaParceirosPorNome-body.xml");
+            
+            replaceParameters(serviceBody, partnerName);
+            
+            Document docRet = si.call("CRUDServiceProvider.loadRecords", "mge", serviceBody.toString() );
 
-	/**
-	 * Substitui os parametros contidos no XML de corpo da requisi��o
-	 * @param body
-	 * @param params  vetor com os parametros, onde @P0 ser� substutuido pelo primeiro elemento e assim por diante 
-	 */
-	private static void replaceParameters(StringBuffer body, String... params) {
-		//Substitui os poss�veis parametros
-		if (params != null && params.length > 0) {
-			for (int i = 0; i < params.length; i++) {
-				String pName = "@P" + i;
-				int fromIndex = 0;
-				while ((fromIndex = body.indexOf(pName, fromIndex)) > -1) {
-					body.replace(fromIndex, fromIndex + pName.length(), params[i]);
-				}
-			}
-		}
-	}
+            printResponse(docRet);
+        } catch (Exception e) {
+            logger.error("Error listing partners", e);
+        }
+    }
 
-	/**
-	 * Carrega o corpo da requisi��o XML e substitui poss�veis parametros
-	 */
-	private static StringBuffer loadServiceBody(Class baseClass, String resourcePath) throws Exception {
-		InputStream inStream = baseClass.getResourceAsStream(resourcePath);
+    /**
+     * Replaces the parameters contained in the XML request body.
+     *
+     * @param body   the XML request body
+     * @param params the parameters to replace in the XML request body
+     */
+    private static void replaceParameters(StringBuffer body, String... params) {
+        // Replace possible parameters
+        if (params != null && params.length > 0) {
+            for (int i = 0; i < params.length; i++) {
+                String pName = "@P" + i;
+                int fromIndex = 0;
+                while ((fromIndex = body.indexOf(pName, fromIndex)) > -1) {
+                    body.replace(fromIndex, fromIndex + pName.length(), params[i]);
+                }
+            }
+        }
+    }
 
-		if (inStream == null) {
-			throw new IllegalArgumentException("Arquivo n�o encontrado: " + baseClass.getName() + " -> " + resourcePath);
-		}
+    /**
+     * Loads the XML request body and replaces possible parameters.
+     *
+     * @param baseClass    the base class to load the resource from
+     * @param resourcePath the path to the resource
+     * @return the XML request body
+     * @throws Exception if an error occurs while loading the resource
+     */
+    private static StringBuffer loadServiceBody(Class baseClass, String resourcePath) throws Exception {
+        InputStream inStream = baseClass.getResourceAsStream(resourcePath);
 
-		byte[] buf = new byte[1024];
+        if (inStream == null) {
+            throw new IllegalArgumentException("File not found: " + baseClass.getName() + " -> " + resourcePath);
+        }
 
-		StringBuffer sbuf = new StringBuffer();
+        byte[] buf = new byte[1024];
 
-		//L� o XML para o StringBuffer
-		while (true) {
-			int readen = inStream.read(buf);
+        StringBuffer sbuf = new StringBuffer();
 
-			if (readen <= 0) {
-				break;
-			}
+        // Read the XML into the StringBuffer
+        while (true) {
+            int readen = inStream.read(buf);
 
-			sbuf.append(new String(buf, 0, readen, "ISO-8859-1"));
-		}
+            if (readen <= 0) {
+                break;
+            }
 
-		return sbuf;
-	}
+            sbuf.append(new String(buf, 0, readen, "ISO-8859-1"));
+        }
 
-	private static void printResponse(Document doc) throws Exception {
-		Transformer transformer = TransformerFactory.newInstance().newTransformer();
-		transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-		StreamResult result = new StreamResult(new StringWriter());
-		DOMSource source = new DOMSource(doc);
-		transformer.transform(source, result);
-		String xmlString = result.getWriter().toString();
-		System.out.println("----Inicio reposta >>>");
-		System.out.println(xmlString);
-		System.out.println("----Fim resposta <<<");
-	}
+        return sbuf;
+    }
+
+    /**
+     * Prints the response XML document.
+     *
+     * @param doc the XML document to print
+     * @throws Exception if an error occurs while printing the document
+     */
+    private static void printResponse(Document doc) throws Exception {
+        Transformer transformer = TransformerFactory.newInstance().newTransformer();
+        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+        StreamResult result = new StreamResult(new StringWriter());
+        DOMSource source = new DOMSource(doc);
+        transformer.transform(source, result);
+        String xmlString = result.getWriter().toString();
+        System.out.println("----Inicio reposta >>>");
+        System.out.println(xmlString);
+        System.out.println("----Fim resposta <<<");
+    }
 
 }
