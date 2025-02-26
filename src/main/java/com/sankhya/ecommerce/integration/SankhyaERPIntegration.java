@@ -1,3 +1,5 @@
+package com.sankhya.ecommerce.integration;
+
 import java.io.InputStream;
 import java.io.StringWriter;
 
@@ -17,21 +19,20 @@ import br.com.sankhya.service.SWServiceInvoker;
  *    1 - SWService (API Sankhya para chamar Webservices)
  *    2 - Apache Commons Codec (Dependencia indireta da SWService)
  *     
- * @author gualberto
- *
+ * 
  */
-public class Main {
+public class SankhyaERPIntegration {
 	public static void main(String[] args) {
-		listarParceiros();
+		listarParceiros("http://192.168.1.218:8180", "SUP", "", "JOSE%");
 	}
 
-	private static void listarParceiros() {
+	private static void listarParceiros(String erpUrl, String erpUser, String erpPassword, String partnerName) {
 		try {
-			SWServiceInvoker si = new SWServiceInvoker("http://192.168.1.218:8180", "SUP", "");
+			SWServiceInvoker si = new SWServiceInvoker(erpUrl, erpUser, erpPassword);
 
-			StringBuffer serviceBody = loadServiceBody(Main.class, "buscaParceirosPorNome-body.xml");
+			StringBuffer serviceBody = loadServiceBody(SankhyaERPIntegration.class, "buscaParceirosPorNome-body.xml");
 			
-			replaceParameters(serviceBody,"JOSE%");
+			replaceParameters(serviceBody, partnerName);
 			
 			Document docRet = si.call("CRUDServiceProvider.loadRecords", "mge", serviceBody.toString() );
 
@@ -42,12 +43,12 @@ public class Main {
 	}
 
 	/**
-	 * Substitui os parametros contidos no XML de corpo da requisição
+	 * Substitui os parametros contidos no XML de corpo da requisiï¿½ï¿½o
 	 * @param body
-	 * @param params  vetor com os parametros, onde @P0 será substutuido pelo primeiro elemento e assim por diante 
+	 * @param params  vetor com os parametros, onde @P0 serï¿½ substutuido pelo primeiro elemento e assim por diante 
 	 */
 	private static void replaceParameters(StringBuffer body, String... params) {
-		//Substitui os possíveis parametros
+		//Substitui os possï¿½veis parametros
 		if (params != null && params.length > 0) {
 			for (int i = 0; i < params.length; i++) {
 				String pName = "@P" + i;
@@ -60,20 +61,20 @@ public class Main {
 	}
 
 	/**
-	 * Carrega o corpo da requisição XML e substitui possíveis parametros
+	 * Carrega o corpo da requisiï¿½ï¿½o XML e substitui possï¿½veis parametros
 	 */
 	private static StringBuffer loadServiceBody(Class baseClass, String resourcePath) throws Exception {
 		InputStream inStream = baseClass.getResourceAsStream(resourcePath);
 
 		if (inStream == null) {
-			throw new IllegalArgumentException("Arquivo não encontrado: " + baseClass.getName() + " -> " + resourcePath);
+			throw new IllegalArgumentException("Arquivo nï¿½o encontrado: " + baseClass.getName() + " -> " + resourcePath);
 		}
 
 		byte[] buf = new byte[1024];
 
 		StringBuffer sbuf = new StringBuffer();
 
-		//Lê o XML para o StringBuffer
+		//Lï¿½ o XML para o StringBuffer
 		while (true) {
 			int readen = inStream.read(buf);
 
